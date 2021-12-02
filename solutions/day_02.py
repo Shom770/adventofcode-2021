@@ -1,6 +1,7 @@
-from solutions.helper import helper
+from helper import AOC
 
 aoc = AOC()
+
 
 @aoc.submit(1)
 def part_one(file) -> int:
@@ -15,9 +16,8 @@ def part_one(file) -> int:
             case ("down", num):
                 depth += int(num)
 
-    print(depth * horiz)
+    return depth * horiz
 
-part_one()
 
 @aoc.submit(2)
 def part_two(file) -> int:
@@ -33,4 +33,4 @@ def part_two(file) -> int:
             case ("down", num):
                 aim += int(num)
 
-    print(depth * horiz)
+    return depth * horiz

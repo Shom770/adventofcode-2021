@@ -1,7 +1,6 @@
 from datetime import datetime
 from typing import Callable
 from pathlib import Path
-from time import sleep
 import argparse
 import os
 
@@ -31,16 +30,15 @@ class AOC:
 
     def submit(self, part: int) -> Callable:
         """Function for submitting an AOC solution."""
-        def decorator(function: Callable) -> Callable:
+        def decorator(function: Callable) -> None:
             """Underlying decorator that returns `wrapper`"""
             def wrapper() -> None:
                 """Handles submitting."""
                 day_name = f"day_{str(self.day).zfill(2)}"
 
-                with open(f"./solutions/{day_name}/input.txt") as file:
+                with open(f"./{day_name}/input.txt") as file:
                     result = function(file)
 
-                print("here")
                 resp = requests.post(
                     url=f"{self.url}/answer",
                     cookies={"session": self.session},
@@ -55,15 +53,15 @@ class AOC:
                         rich.print(success)
                     case _:
                         raise APIError(resp.text)
-            return wrapper
+            wrapper()
         return decorator
 
     def get_input(self):
         day_name = f"day_{str(self.day).zfill(2)}"
         if not os.path.exists(f"./solutions/{day_name}/"):
             os.mkdir(f"./solutions/{day_name}")
-            os.chdir(f"./solutions/{day_name}")
             Path(f"{day_name}.py").touch()
+            os.chdir(f"./solutions/{day_name}")
             Path(f"input.txt").touch()
             Path("README.md").touch()
             os.chdir(fr"C:\Users\{os.environ['NAME']}\PycharmProjects\adventofcode\adventofcode-2021")
