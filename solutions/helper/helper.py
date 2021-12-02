@@ -40,6 +40,7 @@ class AOC:
                 with open(f"./solutions/{day_name}/input.txt") as file:
                     result = function(file)
 
+                print("here")
                 resp = requests.post(
                     url=f"{self.url}/answer",
                     cookies={"session": self.session},
