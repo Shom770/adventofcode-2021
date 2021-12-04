@@ -1,5 +1,6 @@
 from ast import literal_eval
 from datetime import datetime
+from textwrap import dedent
 from typing import Any, Callable, Union
 from pathlib import Path
 import argparse
@@ -31,6 +32,26 @@ class AOC:
         self.session = os.environ["COOKIE"]
         self.url = f"https://adventofcode.com/{year}/day/{self.day}"
 
+    def template(self) -> None:
+        with open(f"./solutions/day_{str(self.day).zfill(2)}.py", "r+") as file:
+            if not file.read():
+                raise FileExistsError
+
+            template_string = dedent(""""
+            from helper import AOC
+            
+            aoc = AOC()
+            
+            @aoc.submit(part=1, run=True, test=True)
+            def part_one(file_text: str):
+                pass
+                
+            @aoc.submit(part=2, test=True)
+            def part_one(file_text: str):
+                pass
+            """)
+            file.write(template_string)
+
     def get_sample_input(self) -> tuple[str, Any]:
         resp = requests.get(url=self.url, cookies={"session": self.session})
         soup = BeautifulSoup(resp.text, "lxml")
@@ -42,7 +63,7 @@ class AOC:
         if not answer.em:
             answer = last_sentence.find_all("em")[-1]
 
-        answer = answer.text.strip()
+        answer = answer.text.strip().split()[-1]
         try:
             answer = literal_eval(answer)
         except ValueError:
@@ -52,29 +73,66 @@ class AOC:
 
     def submit(self, part: int, *, run: bool = False, test: bool = False) -> Callable:
         """Function for submitting an AOC solution."""
+
+        if test:
+            sample_input, correct_answer = self.get_sample_input()
+
         def decorator(function: Callable) -> Union[None, Callable]:
             """Underlying decorator that returns `wrapper`"""
             def wrapper() -> None:
                 """Handles submitting."""
                 day_name = f"day_{str(self.day).zfill(2)}"
 
-                with open(f"./{day_name}/input.txt") as file:
-                    result = function(file)
+                if not test:
+                    with open(f"./{day_name}/input.txt") as file:
+                        text = file.read().splitlines()
+                        result = function(text)
+                else:
+                    result = function(sample_input.splitlines())
 
-                resp = requests.post(
-                    url=f"{self.url}/answer",
-                    cookies={"session": self.session},
-                    data={"level": part, "answer": result}
-                )
-                match resp.status_code:
-                    case 200:
-                        success = console.Text(
-                            text=resp.text,
+                if not test:
+                    resp = requests.post(
+                        url=f"{self.url}/answer",
+                        cookies={"session": self.session},
+                        data={"level": part, "answer": result}
+                    )
+                    match resp.status_code:
+                        case 200:
+                            success = console.Text(
+                                text=resp.text,
+                                style="bold green"
+                            )
+                            rich.print(success)
+                        case _:
+                            raise APIError(resp.text)
+                else:
+                    assert result == correct_answer, f"Got {result}, was expecting {correct_answer}"
+
+                    rich.print(
+                        console.Text(
+                            "The sample test case passed!",
                             style="bold green"
                         )
-                        rich.print(success)
-                    case _:
-                        raise APIError(resp.text)
+                    )
+
+                    with open(f"./{day_name}/input.txt") as file:
+                        text = file.read().splitlines()
+                        result = function(text)
+
+                    resp = requests.post(
+                        url=f"{self.url}/answer",
+                        cookies={"session": self.session},
+                        data={"level": part, "answer": result}
+                    )
+                    match resp.status_code:
+                        case 200:
+                            success = console.Text(
+                                text=resp.text,
+                                style="bold green"
+                            )
+                            rich.print(success)
+                        case _:
+                            raise APIError(resp.text)
 
             if run:
                 wrapper()
@@ -114,13 +172,17 @@ def run_cli() -> None:
     cli_parser.add_argument("-input", "--input", help="The day to get the input from.", type=int)
     cli_parser.add_argument("--test", help="Day for getting sample input.", type=int)
     cli_parser.add_argument("--year", help="Year for getting input.", type=int)
+    cli_parser.add_argument("--template", help="Template a file.", type=bool)
     cli_args = cli_parser.parse_args()
 
-    aoc = AOC(day=cli_args.input or cli_args.test, year=cli_args.year)
-    if not cli_args.test:
+    aoc = AOC(day=cli_args.input or cli_args.test or datetime.today().day, year=cli_args.year or datetime.today().year)
+    if cli_args.input:
         aoc.get_input()
-    else:
+    elif cli_args.test:
         aoc.get_sample_input()
+
+    if cli_args.template:
+        aoc.template()
 
 
 if __name__ == "__main__":
