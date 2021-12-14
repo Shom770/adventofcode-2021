@@ -10,19 +10,21 @@ def part_one():
             cave_system[first] += [second,]
             cave_system[second] += [first,]
 
-        paths = set()
+        paths = 0
 
         def dfs(lst, key: str = "start"):
+            nonlocal paths
+
             lst.append(key)
 
             for point in cave_system[key]:
                 if point == "end":
-                    paths.add(tuple([*lst, "end"]))
+                    paths += 1
                 elif (point.islower() and point not in lst) or point.isupper():
                     dfs(lst[:], point)
 
         dfs([])
-        print(len(paths))
+        print(paths)
 
 
 def part_two():
