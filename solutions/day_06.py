@@ -26,7 +26,6 @@ def part_one():
 
         print(len(lanternfish))
 
-
 def part_two():
     with open("./day_06/input.txt") as file:
         lanternfish = {key: value for key, value in zip(range(0, 9), (0,) * 9)}
