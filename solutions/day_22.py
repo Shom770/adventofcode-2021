@@ -19,7 +19,7 @@ def part_one():
                     z_range.start < -50 or z_range.stop > 50):
                 continue
 
-            x_overlaps, y_overlaps, z_overlaps = (0, 0, 0)
+            x_overlaps, y_overlaps, z_overlaps = set(), set(), set()
 
             for x in x_range:
                 for y in y_range:
@@ -32,103 +32,63 @@ def part_one():
                         elif direction == "on":
                             if line == "on x=-22..28,y=-29..23,z=-38..16":
                                 if (x, y, z) in cubes:
-                                    x_overlaps += 1
-                                    y_overlaps += 1
-                                    z_overlaps += 1
+                                    x_overlaps.add(x)
+                                    y_overlaps.add(y)
+                                    z_overlaps.add(z)
 
                             cubes.add((x, y, z))
+
+            print(len(cubes))
+            print(x_overlaps, y_overlaps, z_overlaps)
 
         return len(cubes)
 
 
 def part_two():
-    def overlap_off(range_rem: range, all_ranges: set):
-        new_ranges = set()
-        x_rem, y_rem, z_rem = set(), set(), set()
+    def calculate_area(cube: tuple):
+        return (cube[1] - cube[0] + 1) * (cube[3] - cube[2] + 1) * (cube[5] - cube[4] + 1)
 
-        for x_r, y_r, z_r in all_ranges:
-            result = overlap((x_r, y_r, z_r), range_rem)
-            if isinstance(result, tuple):
-                overlap_rem = result
-                x_r = range(max((x_r.start, overlap_rem[0].start)), min((x_r.stop, overlap_rem[0].stop)))
-                y_r = range(max((y_r.start, overlap_rem[1].start)), min((y_r.stop, overlap_rem[1].stop)))
-                z_r = range(max((z_r.start, overlap_rem[2].start)), min((z_r.stop, overlap_rem[2].stop)))
+    def intersection(cube1: tuple, cube2: tuple):
+        return (
+            max(cube1[0], cube2[0]), min(cube1[1], cube2[1]),
+            max(cube1[2], cube2[2]), min(cube1[3], cube2[3]),
+            max(cube1[4], cube2[4]), min(cube1[5], cube2[5])
+        )
 
-                x_rem = {*x_rem, *tuple(x_r)}
-                y_rem = {*y_rem, *tuple(y_r)}
-                z_rem = {*z_rem, *tuple(z_r)}
+    def overlapping(cube1: tuple, cube2: tuple):
+        return not (
+                cube1[1] < cube2[0] or cube1[0] > cube2[1]
+                or cube1[3] < cube2[2] or cube1[2] > cube2[3]
+                or cube1[5] < cube2[4] or cube1[4] > cube2[5]
+        )
 
-            new_ranges.add((x_r, y_r, z_r))
-
-        return new_ranges, len(x_rem) * len(y_rem) * len(z_rem)
-
-    def overlap(range1: tuple, range2: tuple):
-        x1, x2 = range1[0], range2[0]
-        y1, y2 = range1[1], range2[1]
-        z1, z2 = range1[2], range2[2]
-
-        x_val = range(max((x2.start, x1.start)), min((x2.stop, x1.stop)))
-        y_val = range(max((y2.start, y1.start)), min((y2.stop, y1.stop)))
-        z_val = range(max((z2.start, z1.start)), min((z2.stop, z1.stop)))
-
-        if not (x1.start <= x_val.start <= x1.stop or x1.start <= x_val.stop <= x1.stop):
-            return None
-
-        if not (y1.start <= y_val.start <= y1.stop or y1.start <= y_val.stop <= y1.stop):
-            return None
-
-        if not (z1.start <= z_val.start <= z1.stop or z1.start <= z_val.stop <= z1.stop):
-            return None
-
-        return x_val, y_val, z_val
-
-    cubes = 0
+    cubes = []
 
     with open("./day_22/input.txt") as file:
-        ranges = set()
         for line in file:
             direction, ranges_ = line.split()
             x_range, y_range, z_range = ranges_.split(",")
 
-            x_start, x_end = x_range.replace("x=", "").split("..")
-            x_range = range(int(x_start), int(x_end) + 1)
+            x_start, x_end = map(int, x_range.replace("x=", "").split(".."))
 
-            y_start, y_end = y_range.replace("y=", "").split("..")
-            y_range = range(int(y_start), int(y_end) + 1)
+            y_start, y_end = map(int, y_range.replace("y=", "").split(".."))
 
-            z_start, z_end = z_range.replace("z=", "").split("..")
-            z_range = range(int(z_start), int(z_end) + 1)
+            z_start, z_end = map(int, z_range.replace("z=", "").split(".."))
 
-            x_overlaps, y_overlaps, z_overlaps = set(), set(), set()
+            current_cube = (x_start, x_end, y_start, y_end, z_start, z_end)
+            new_cubes = []
 
-            remove = False
+            for cube, sign in cubes:
+                if overlapping(current_cube, cube):
+                    new_cubes.append((intersection(current_cube, cube), -sign))
 
-            for range_ in ranges:
-                if direction == "on":
-                    result = overlap(range_, (x_range, y_range, z_range))
-                    if isinstance(result, tuple):
-                        overlap_ = result
-                        x_overlaps = set((*x_overlaps, *overlap_[0]))
-                        y_overlaps = set((*y_overlaps, *overlap_[1]))
-                        z_overlaps = set((*z_overlaps, *overlap_[2]))
-                else:
-                    ranges, to_remove = overlap_off((x_range, y_range, z_range), ranges)
-                    remove = True
+            if direction == "on":
+                new_cubes.append((current_cube, 1))
 
-            if not remove:
-                print(len(x_overlaps))
-                print(len(y_overlaps))
-                print(len(z_overlaps))
+            cubes += new_cubes
 
-                cubes += (len(x_range) * len(y_range) * len(z_range)) - \
-                         (len(x_overlaps) * len(y_overlaps) * len(z_overlaps))
-                ranges.add((x_range, y_range, z_range))
-            else:
-                cubes -= to_remove
-
-            print(cubes)
-        return cubes
+        return sum(calculate_area(cube) * sign for cube, sign in cubes)
 
 
-res = part_one()
-print(res == 2758514936282235, abs(res - 2758514936282235), res)
+res = part_two()
+print(res)
