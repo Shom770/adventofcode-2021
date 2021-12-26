@@ -1,9 +1,10 @@
 import functools
+import itertools
 
 HALLWAYS = [(x, 1) for x in (1, 2, 4, 6, 8, 10, 11)]
-ROOMS = [((x, 2), (x, 3)) for x in (3, 5, 7, 9)]
+ROOMS = [((x, 2), (x, 3), (x, 4), (x, 5)) for x in (3, 5, 7, 9)]
 TOPMOST_ROOMS = [room[0] for room in ROOMS]
-BOTTOM_MOST_ROOMS = [room[-1] for room in ROOMS]
+BOTTOM_MOST_ROOMS = list(itertools.chain.from_iterable([room[1:] for room in ROOMS]))
 
 COLUMNS = {"A": 3, "B": 5, "C": 7, "D": 9}
 
@@ -22,25 +23,48 @@ def valid_positions(grid: dict):
     move_nodes = [key for key, value in grid.items()
                   if value.isalpha() and (key in HALLWAYS or grid.get((key[0], key[1] - 1)) == ".")]
 
-    def all_adjacent(x: int, y: int, all_spaces: list):
-        for adjacent in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
-            if adjacent in grid.keys() and grid[adjacent] == "." and adjacent not in all_spaces:
-                all_spaces.append(adjacent)
-                all_adjacent(*adjacent, all_spaces)
+    def all_adjacent(x: int, y: int):
+        q = [(x, y)]
+        all_spaces = []
+
+        while q:
+            x, y = q.pop()
+            for adjacent in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+                if adjacent in grid.keys() and grid[adjacent] == "." and adjacent not in all_spaces:
+                    all_spaces.append(adjacent)
+                    q.append(adjacent)
 
         return all_spaces
+
+    def spaces_above_open(x: int, y: int, grid_: dict) -> bool:
+        while y != 2:
+            y -= 1
+            if grid_[(x, y)] != ".":
+                return False
+
+        return True
+
+    def spaces_below(x: int, y: int, grid_: dict) -> list:
+        all_spaces = []
+        while y != 5:
+            y += 1
+            all_spaces.append(grid_[(x, y)])
+
+        return all_spaces
+
+    def space_below_open(x: int, y: int, grid_: dict) -> bool:
+        return grid[(x, y + 1)] == "."
 
     corresponding = {}
 
     for node in move_nodes:
-        spaces = all_adjacent(*node, [])
-        # Check if the node is in a room
-        if node in TOPMOST_ROOMS or (node in BOTTOM_MOST_ROOMS and grid[(node[0], node[1] - 1)] == "."):
+        spaces = all_adjacent(*node)
+        if node in TOPMOST_ROOMS or (node in BOTTOM_MOST_ROOMS and spaces_above_open(*node, grid)):
             # Check if the node is in its correct room
             if node[0] == COLUMNS[grid[node]]:
-                if node[1] == 3:
+                if node[1] == 5:
                     continue
-                elif grid[(node[0], node[1] + 1)] == grid[node]:
+                elif (res := spaces_below(*node, grid)) and set(res) == {grid[node]}:
                     continue
 
             spaces = [space for space in spaces if space in HALLWAYS]
@@ -50,17 +74,25 @@ def valid_positions(grid: dict):
 
             corresponding[node] = spaces
         elif node in HALLWAYS:
-            spaces = [space for space in spaces if space[0] == COLUMNS[grid[node]] and space[-1] in {2, 3}
+            spaces = [space for space in spaces if space[0] == COLUMNS[grid[node]] and space[-1] in {2, 3, 4, 5}
                       and (
                               grid[(space[0], 2)] in {".", grid[node]}
                               and grid[(space[0], 3)] in {".", grid[node]}
+                              and grid[(space[0], 4)] in {".", grid[node]}
+                              and grid[(space[0], 5)] in {".", grid[node]}
                       )]
 
             if not spaces:
                 continue
 
-            if (COLUMNS[grid[node]], 2) in spaces and grid[(COLUMNS[grid[node]], 3)] == ".":
-                spaces.remove((COLUMNS[grid[node]], 2))
+            for room_pos in (
+                    (COLUMNS[grid[node]], 2),
+                    (COLUMNS[grid[node]], 3),
+                    (COLUMNS[grid[node]], 4),
+                    (COLUMNS[grid[node]], 5),
+            ):
+                if room_pos in spaces and space_below_open(*room_pos, grid):
+                    spaces.remove(room_pos)
 
             corresponding[node] = spaces
 
