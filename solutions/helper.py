@@ -55,13 +55,29 @@ class AOC:
     def get_sample_input(self) -> tuple[str, Any]:
         resp = requests.get(url=self.url, cookies={"session": self.session})
         soup = BeautifulSoup(resp.text, "lxml")
-        test_input = soup.pre.text.strip()
+
+        for possible_test_input in soup.find_all("pre"):
+            preceding_text = possible_test_input.previous_element.previous_element.text.lower()
+            if ("for example" in preceding_text or "consider" in preceding_text) and ":" in preceding_text:
+                test_input = possible_test_input.text.strip()
+            elif len(possible_test_input.text.split("\n")) > 1:
+                test_input = possible_test_input.text.strip()
 
         current_part = soup.find_all("article")[-1]
         last_sentence = current_part.find_all("p")[-2]
-        answer = last_sentence.find_all("code")[-1]
+
+        try:
+            answer = last_sentence.find_all("code")[-1]
+        except IndexError:
+            raise RuntimeWarning(
+                "Looks like there was an issue with retrieving the test data. Perhaps you could"
+                "pass in test data manually or ignore testing altogether?"
+            )
         if not answer.em:
-            answer = last_sentence.find_all("em")[-1]
+            try:
+                answer = last_sentence.find_all("em")[-1]
+            except IndexError:
+                pass
 
         answer = answer.text.strip().split()[-1]
         try:

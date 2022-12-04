@@ -1,6 +1,8 @@
 from bs4 import BeautifulSoup
 import requests
 
+import textwrap
+
 
 def get_stats(year: int) -> dict:
     soup = BeautifulSoup(requests.get(f"https://adventofcode.com/{year}/stats").text, "lxml")
@@ -21,3 +23,5 @@ def take_stats(stats: dict) -> None:
     print("======")
     for value in list(stats.values())[::-1]:
         print(round(sum(value) / sum(list(stats.values())[-1]), 3))
+
+print("\n".join([item.strip().replace("(", "").replace(")", "") for item in [' (a, b, c)', ' (b, c, a)', ' (c, a, b)', ' (-a, -b, c)', ' (-b, -c, a)', ' (-c, -a, b)', ' (-a, b, -c)', ' (-b, c, -a)', ' (-c, a, -b)', ' (a, -b, -c)', ' (b, -c, -a)', ' (c, -a, -b)', ' (-a, -c, -b)', ' (-c, -b, -a)', ' (-b, -a, -c)', ' (a, c, -b)', ' (c, b, -a)', ' (b, a, -c)', ' (a, -c, b)', ' (c, -b, a)', ' (b, -a, c)', ' (-a, c, b)', ' (-c, b, a)', ' (-b, a, c)']]))
